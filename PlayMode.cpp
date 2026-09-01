@@ -73,6 +73,7 @@ uint8_t reverse_bits(uint8_t b) {
 	return r;
 }
 
+// save a symmetric tile (use for players' different direction)
 PPU466::Tile flip_tile_horizontal(PPU466::Tile const &src) {
 	PPU466::Tile dst;
 	for (uint32_t y = 0; y < 8; ++y) {
@@ -97,8 +98,8 @@ PlayMode::PlayMode() {
 	ppu.tile_table[10] = flip_tile_horizontal(ppu.tile_table[8]);
 	ppu.tile_table[11] = flip_tile_horizontal(ppu.tile_table[9]);
 
-	extract_8_16(data_path("door1.png"), &ppu.tile_table[36], &ppu.palette_table[6]);
-	extract_8_16(data_path("door2.png"), &ppu.tile_table[46], &ppu.palette_table[4]);
+	extract_8_16(data_path("exit1.png"), &ppu.tile_table[36], &ppu.palette_table[6]);
+	extract_8_16(data_path("exit2.png"), &ppu.tile_table[46], &ppu.palette_table[4]);
 	extract_16_16(data_path("box.png"), &ppu.tile_table[38], &ppu.palette_table[7]);
 	extract_16_8(data_path("you.png"), &ppu.tile_table[42], &ppu.palette_table[3]);
 	extract_16_8(data_path("win.png"), &ppu.tile_table[44], &ppu.palette_table[3]);
@@ -107,9 +108,9 @@ PlayMode::PlayMode() {
 
 	ppu.palette_table[1] = {
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0x6b, 0x3a, 0x1a, 0xff),
-		glm::u8vec4(0xff, 0xf4, 0xa4, 0xff),
-		glm::u8vec4(0x71, 0x6a, 0x79, 0xff),
+		glm::u8vec4(0x6b, 0x3a, 0x1a, 0xff),	// platform
+		glm::u8vec4(0xff, 0xf4, 0xa4, 0xff),	// daybackground
+		glm::u8vec4(0x71, 0x6a, 0x79, 0xff),	// night background
 	};
 
 	ppu.background_color = glm::u8vec3(0xff, 0xf4, 0xa4);
@@ -136,7 +137,6 @@ PlayMode::PlayMode() {
 		int32_t y0 = int32_t(p.position.y) / 8;
 		int32_t x1 = int32_t(p.position.x + p.w) / 8;
 		int32_t y1 = int32_t(p.position.y + PlatformHeight) / 8;
-		if (y1 <= y0) y1 = y0 + 1;
 		for (int32_t ty = y0; ty < y1; ++ty) {
 			for (int32_t tx = x0; tx < x1; ++tx) {
 				if (tx < 0 || ty < 0) continue;
@@ -342,27 +342,26 @@ void PlayMode::update(float elapsed) {
 		texts[1].is_exposed = true;
 	}
 
-	if (!lost) {
-		for (Coin &coin : coins) {
-			if (coin.collected) continue;
-			if (player_overlap_coin(player1, coin) || player_overlap_coin(player2, coin)) {
-				coin.collected = true;
-				if (coin.exit) coin.exit->is_locked = false;
-			}
-		}
-
-		if (!exit1.is_locked && player_overlap_exit(player1, exit1)) {
-			exit1.reached = true;
-		}
-		if (!exit2.is_locked && player_overlap_exit(player2, exit2)) {
-			exit2.reached = true;
-		}
-		if (exit1.reached && exit2.reached) {
-			won = true;
-			texts[0].is_exposed = true;
-			texts[1].is_exposed = true;
+	for (Coin &coin : coins) {
+		if (coin.collected) continue;
+		if (player_overlap_coin(player1, coin) || player_overlap_coin(player2, coin)) {
+			coin.collected = true;
+			// unlock related exit
+			if (coin.exit) coin.exit->is_locked = false;
 		}
 	}
+
+	if (!exit1.is_locked && player_overlap_exit(player1, exit1)) {
+		exit1.reached = true;
+	}
+	if (!exit2.is_locked && player_overlap_exit(player2, exit2)) {
+		exit2.reached = true;
+	}
+	if (exit1.reached && exit2.reached) {
+		won = true;
+		texts[0].is_exposed = true;
+		texts[1].is_exposed = true;
+		}
 
 	left.downs = 0;
 	right.downs = 0;
@@ -408,6 +407,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		ppu.sprites[s + 3].attributes = 7;
 	}
 
+	// exit1 is available
 	if (!exit1.is_locked) {
 		ppu.sprites[6].x = uint8_t(exit1.position.x);
 		ppu.sprites[6].y = uint8_t(exit1.position.y);
