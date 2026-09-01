@@ -1,0 +1,12 @@
+objs/
+dist/README-SDL.txt
+dist/README-libpng.txt
+dist/game.ilk
+dist/game.pdb
+dist/SDL3.dll
+dist/game
+dist/game.exe
+dist/print_png
+dist/print_png.exe
+test_pixels.png
+maek-cache.json
